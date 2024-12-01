@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Sharing App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            color: #000000;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            background-color: #000000;
+            color: #ffffff;
+        }
+        nav button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        nav button:hover {
+            background-color: #000000;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f8f8f8;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #333333;
+        }
+        .recipe-card {
+            border: 1px solid #000000;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background-color: #ffffff;
+        }
+        .recipe-card img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        .recipe-actions button {
+            padding: 5px 10px;
+            background-color: #000000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .recipe-actions button:hover {
+            background-color: #333333;
+        }
+        .comment-section {
+            margin-top: 10px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .comment {
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <button onclick="showSection('register')">Register</button>
+        <button onclick="showSection('login')">Login</button>
+        <button onclick="checkAccess('upload')">Upload Recipe</button>
+        <button onclick="checkAccess('view')">View Recipes</button>
+        <button onclick="logout()">Logout</button>
+    </nav>
+
+    <div class="container">
+        <!-- Register Section -->
+        <section id="register" style="display:none;">
+            <h2>Register</h2>
+            <input type="text" id="register-username" placeholder="Username" required>
+            <input type="password" id="register-password" placeholder="Password" required>
+            <button onclick="register()">Register</button>
+        </section>
+
+        <!-- Login Section -->
+        <section id="login" style="display:none;">
+            <h2>Login</h2>
+            <input type="text" id="login-username" placeholder="Username" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button onclick="login()">Login</button>
+        </section>
+
+        <!-- Upload Recipe Section -->
+        <section id="upload" style="display:none;">
+            <h2>Upload Recipe</h2>
+            <input type="text" id="recipe-name" placeholder="Recipe Name" required>
+            <textarea id="recipe-description" placeholder="Recipe Description" rows="4" required></textarea>
+            <input type="file" id="recipe-photo" accept="image/*" required>
+            <button onclick="uploadRecipe()">Upload</button>
+        </section>
+
+        <!-- View Recipes Section -->
+        <section id="view" style="display:none;">
+            <h2>Recipes</h2>
+            <div id="recipes-container"></div>
+        </section>
+    </div>
+
+    <script>
+        const users = JSON.parse(localStorage.getItem('users')) || {};
+        const recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+        let currentUser = localStorage.getItem('currentUser');
+
+        function showSection(sectionId) {
+            document.querySelectorAll('section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        function saveToLocalStorage(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function register() {
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+
+            if (users[username]) {
+                alert('Username already exists');
+                return;
+            }
+
+            users[username] = password;
+            saveToLocalStorage('users', users);
+            alert('Registration successful!');
+            showSection('login');
+        }
+
+        function login() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            if (users[username] && users[username] === password) {
+                currentUser = username;
+                localStorage.setItem('currentUser', username);
+                alert('Login successful!');
+                showSection('view');
+                displayRecipes();
+            } else {
+                alert('Invalid username or password');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            alert('Logged out successfully!');
+            showSection('login');
+        }
+
+        function uploadRecipe() {
+            const name = document.getElementById('recipe-name').value;
+            const description = document.getElementById('recipe-description').value;
+            const photoInput = document.getElementById('recipe-photo');
+            const reader = new FileReader();
+
+            if (!name || !description || !photoInput.files[0]) {
+                alert('All fields are required');
+                return;
+            }
+
+            reader.onload = function(event) {
+                recipes.push({
+                    id: Date.now(),
+                    username: currentUser,
+                    name,
+                    description,
+                    photo: event.target.result,
+                    ratings: {},
+                    comments: []
+                });
+                saveToLocalStorage('recipes', recipes);
+                alert('Recipe uploaded successfully!');
+                showSection('view');
+                displayRecipes();
+            };
+            reader.readAsDataURL(photoInput.files[0]);
+        }
+
+        function rateRecipe(recipeId) {
+            const recipe = recipes.find(r => r.id === recipeId);
+            if (!recipe) {
+                alert('Recipe not found.');
+                return;
+            }
+            if (recipe.ratings[currentUser]) {
+                alert('You have already rated this recipe!');
+                return;
+            }
+            const rating = parseInt(prompt('Enter your rating (1-5):'));
+            if (rating >= 1 && rating <= 5) {
+                recipe.ratings[currentUser] = rating;
+                saveToLocalStorage('recipes', recipes);
+                alert('Rating submitted!');
+                displayRecipes();
+            } else {
+                alert('Invalid rating. Please enter a number between 1 and 5.');
+            }
+        }
+
+        function addComment(recipeId) {
+            const recipe = recipes.find(r => r.id === recipeId);
+            if (!recipe) {
+                alert('Recipe not found.');
+                return;
+            }
+            const comment = prompt('Enter your comment:');
+            if (comment) {
+                recipe.comments.push({ username: currentUser, text: comment.trim() });
+                saveToLocalStorage('recipes', recipes);
+                displayRecipes();
+            }
+        }
+
+        function editRecipe(recipeId) {
+            const recipe = recipes.find(r => r.id === recipeId);
+            if (!recipe) {
+                alert('Recipe not found.');
+                return;
+            }
+            if (recipe.username !== currentUser) {
+                alert('Only the author can edit this recipe.');
+                return;
+            }
+            const newName = prompt('Edit Recipe Name:', recipe.name);
+            const newDescription = prompt('Edit Recipe Description:', recipe.description);
+
+            if (newName && newDescription) {
+                recipe.name = newName.trim();
+                recipe.description = newDescription.trim();
+                saveToLocalStorage('recipes', recipes);
+                alert('Recipe updated!');
+                displayRecipes();
+            }
+        }
+
+        function displayRecipes() {
+            const container = document.getElementById('recipes-container');
+            container.innerHTML = recipes.map(recipe => `
+                <div class="recipe-card" id="recipe-${recipe.id}">
+                    <h4>${recipe.name} <small>(by ${recipe.username})</small></h4>
+                    <p>${recipe.description}</p>
+                    <img src="${recipe.photo}" alt="${recipe.name}">
+                    <p>Rating: ${Object.values(recipe.ratings).length 
+                        ? (Object.values(recipe.ratings).reduce((sum, rating) => sum + rating, 0) / Object.values(recipe.ratings).length).toFixed(1)
+                        : 'Not rated yet'}</p>
+                    <div class="recipe-actions">
+                        <button onclick="rateRecipe(${recipe.id})">Rate</button>
+                        ${recipe.username === currentUser ? `<button onclick="editRecipe(${recipe.id})">Edit</button>` : ''}
+                        <button onclick="addComment(${recipe.id})">Add Comment</button>
+                    </div>
+                    <div class="comment-section">
+                        <h5>Comments:</h5>
+                        ${recipe.comments.map(c => `
+                            <div class="comment">
+                                <strong>${c.username}:</strong> ${c.text}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function checkAccess(sectionId) {
+            if (!currentUser) {
+                alert('You must be logged in to access this section.');
+                showSection('login');
+            } else {
+                showSection(sectionId);
+                if (sectionId === 'view') {
+                    displayRecipes();
+                }
+            }
+        }
+
+        window.onload = function() {
+    localStorage.clear();
+    console.log("Local storage cleared on page load!");
+};
+
+    </script>
+</body>
+</html>
